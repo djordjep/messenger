@@ -1,0 +1,46 @@
+version: "1"
+services:
+  mesenger-client-app:
+    build: ./app
+    # command: npm start
+    restart: unless-stopped
+    ports:
+      - "3690:3000"
+    volumes:
+      - ../app:/app
+    tty: true
+    depends_on:
+      - mesenger-backend-api
+    networks:
+      - messenger_01
+
+  mesenger-backend-api:
+    build: ./api
+    # command: npm start
+    restart: unless-stopped
+    ports:
+      - "3600:4000"
+      - "4440:4440"
+    volumes:
+      - ../api:/api
+    tty: true
+    depends_on:
+      - mesenger-backend-mongodb
+    networks:
+      - messenger_01
+
+  mesenger-backend-mongodb:
+    image: mongo
+    restart: unless-stopped
+    container_name: mesenger_mongodb
+    volumes:
+      - ./db:/data/db
+    ports:
+      - 27017:27017
+    command: mongod
+    networks:
+      - messenger_01
+
+networks:
+  messenger_01:
+    driver: bridge
