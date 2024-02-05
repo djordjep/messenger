@@ -56,7 +56,7 @@ function MessagesList() {
                 borderRadius: "4px",
                 mb: 1,
                 p: 2,
-                backgroundColor: getColorForSender(message.sender._id),
+                backgroundColor: getColorForSender(message.sender?._id),
               }}
             >
               <Typography

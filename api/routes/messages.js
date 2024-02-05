@@ -2,9 +2,23 @@ const express = require("express");
 const router = express.Router({ mergeParams: true });
 const Message = require("../models/Message");
 const Chat = require("../models/Chat");
+const encryptMessage = require("../utils/encryptMessage");
+
+const winston = require("winston");
+
+const logger = winston.createLogger({
+  transports: [
+    new winston.transports.File({
+      filename: "debug_message_routes.log",
+      level: "info",
+    }),
+  ],
+});
 
 // Endpoint to post a message to a chat
 router.post("/", async (req, res) => {
+  // disable
+  return res.status(404).send("Chat not found or access denied");
   try {
     const { chatId } = req.params;
     const userId = req.user._id;
@@ -15,6 +29,11 @@ router.post("/", async (req, res) => {
     if (!chat) {
       return res.status(404).send("Chat not found or access denied");
     }
+    // encrypt message content
+    const { encryptedMessage, encryptedSymmetricKeys } = await encryptMessage(
+      content,
+      chat.participants
+    );
 
     // Create and save the new message
     const message = new Message({

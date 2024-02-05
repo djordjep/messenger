@@ -10,8 +10,15 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
 const app = express();
-
-app.use(cors({ origin: "http://172.28.0.4:3000" }));
+// add multiple origins in cors
+app.use(
+  cors({
+    origin: [
+      "https://192.168.1.19",
+      "https://workable-rooster-on.ngrok-free.app",
+    ],
+  })
+);
 app.use(express.json());
 
 app.get("/", (req, res) => {
@@ -21,10 +28,10 @@ app.get("/", (req, res) => {
 app.post("/register", async (req, res) => {
   try {
     console.log(req.body);
-    const { username, password } = req.body;
+    const { username, password, publicKey } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = new User({ username, password: hashedPassword });
+    const user = new User({ username, password: hashedPassword, publicKey });
     await user.save();
 
     res.status(201).send('{"message" : "User created"}');
@@ -43,7 +50,9 @@ app.post("/login", async (req, res) => {
       const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
         expiresIn: "1h",
       });
-      res.status(200).json({ token });
+      res
+        .status(200)
+        .json({ token, userId: user._id, username: user.username });
     } else {
       res.status(401).send("Invalid credentials");
     }
@@ -52,9 +61,9 @@ app.post("/login", async (req, res) => {
   }
 });
 
-app.use("/api/users", authenticateToken, userRoutes);
-app.use("/api/chats", authenticateToken, chatRoutes);
-app.use("/api/chats/:chatId/messages", authenticateToken, messageRoutes);
-app.use("/api/users/:userId/contacts", authenticateToken, contactsRoutes);
+app.use("/users", authenticateToken, userRoutes);
+app.use("/chats", authenticateToken, chatRoutes);
+app.use("/chats/:chatId/messages", authenticateToken, messageRoutes);
+app.use("/users/:userId/contacts", authenticateToken, contactsRoutes);
 
 module.exports = app;

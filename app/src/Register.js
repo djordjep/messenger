@@ -10,6 +10,7 @@ import {
   Snackbar,
 } from "@mui/material";
 import { useNavigate, Link as RouterLink } from "react-router-dom";
+import { storeKey } from "./keyStorage";
 
 function RegisterForm() {
   const [username, setUsername] = useState("");
@@ -32,11 +33,21 @@ function RegisterForm() {
       true,
       ["encrypt", "decrypt"]
     );
+    // store the private key in the browser's IndexedDB
+    await storeKey(keyPair.privateKey);
+    // upload the public key to the server
+    const publicKey = await window.crypto.subtle.exportKey(
+      "jwk",
+      keyPair.publicKey
+    );
+    console.log(publicKey);
+    return JSON.stringify(publicKey);
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     try {
+      const publicKey = await generateEncryptionKeys();
       const response = await fetch(
         `${process.env.REACT_APP_API_DOMAIN}/register`,
         {
@@ -44,7 +55,7 @@ function RegisterForm() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ username, password }),
+          body: JSON.stringify({ username, password, publicKey }),
         }
       );
       const data = await response.json();
@@ -54,7 +65,6 @@ function RegisterForm() {
           message: "Registration successful!",
           severity: "success",
         });
-        generateEncryptionKeys();
         setTimeout(() => navigate("/login"), 3000);
       } else {
         // Handle errors (e.g., show an error message)

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useUser } from "./UserContext";
 import { getFetchMessages } from "./api";
+import { decryptMessages } from "./crypto";
 
 export const MessageContext = createContext();
 
@@ -16,8 +17,14 @@ export const MessageProvider = ({ children }) => {
     console.log("MessageProvider useEffect currentChatId:", currentChatId);
     if (currentChatId) {
       getFetchMessages(currentChatId, user)
-        .then((fetchedMessages) => {
-          setMessages(fetchedMessages.messages);
+        .then(async (fetchedMessages) => {
+          // decrypt messages
+          const decrypred = await decryptMessages(
+            fetchedMessages.messages,
+            user
+          );
+          console.log("decrypred:", decrypred);
+          setMessages(decrypred);
         })
         .catch((error) => {
           console.error("Failed to fetch messages:", error);
@@ -34,7 +41,9 @@ export const MessageProvider = ({ children }) => {
   };
 
   return (
-    <MessageContext.Provider value={{ messages, addMessage, setCurrentChatId }}>
+    <MessageContext.Provider
+      value={{ messages, addMessage, currentChatId, setCurrentChatId }}
+    >
       {children}
     </MessageContext.Provider>
   );

@@ -1,61 +1,63 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Box, Drawer, TextField, Button } from "@mui/material";
 import { useMessageContext } from "./MessageContext";
 import ChatList from "./ChatList";
 import MessagesList from "./MessagesList";
 import { useUser } from "./UserContext";
 import ErrorBoundary from "./ErrorBoundary";
+// import { createConnection, sendMessage, closeConnection } from "./wsService";
+import { useWebSocket } from "./wsContext";
 
 function Messenger() {
   const [selectedChatId, setSelectedChatId] = useState(null);
 
-  async function fetchContacts() {
-    // TODO: Fetch contacts from API
-  }
-
-  const token = useUser().user.token;
-  const socket = useMemo(
-    () => new WebSocket(`ws://localhost:4440?token=${token}`),
-    [token]
-  );
   const user = useUser().user;
 
-  const { addMessage, setCurrentChatId } = useMessageContext(); // Add fallback value to prevent errors
+  const { addMessage, setCurrentChatId } = useMessageContext();
 
-  socket.addEventListener("message", (event) => {
+  const handleMessage = (event) => {
     const message = JSON.parse(event.data);
     console.log("New message received:", message);
     if (message.type === "chatMessage") {
       addMessage(message);
     }
-  });
+  };
+
+  const onWebSocketReady = (newSocket) => {
+    console.log("onWebSocketReady");
+    if (!newSocket) {
+      console.log("socket is null");
+      return;
+    }
+
+    newSocket.addEventListener("message", handleMessage);
+  };
+
+  const { socket, sendMessage, setSocketReadyCallback } = useWebSocket(); // this is firing twice?
+
+  useEffect(() => {
+    // if (socket) {
+    //   console.log("adding event listener to socket");
+    //   socket.addEventListener("message", handleMessage);
+    // }
+    // if (!socket) return;
+    setSocketReadyCallback(onWebSocketReady);
+  }, []);
 
   useEffect(() => {
     if (!selectedChatId) {
       return;
     }
 
-    const joinChatMessage = JSON.stringify({
+    const joinChatMessage = {
       type: "joinChat",
       chatId: selectedChatId,
       userName: user.username,
-    });
+    };
 
     setCurrentChatId(selectedChatId);
-
-    socket.send(joinChatMessage);
-    // Cleanup WebSocket connection when component unmounts
-    return () => {
-      socket.close();
-    };
-  }, [setCurrentChatId, selectedChatId, socket, user]);
-
-  function sendMessage(message) {
-    if (socket.readyState === WebSocket.OPEN) {
-      console.log("Sending message: ", message);
-      socket.send(JSON.stringify(message));
-    }
-  }
+    sendMessage(joinChatMessage, user.token);
+  }, [selectedChatId, user]);
 
   const [messageText, setMessageText] = useState("");
   function handleInputChange(event) {
@@ -66,9 +68,9 @@ function Messenger() {
     const message = {
       type: "chatMesssage",
       content: messageText,
-      // Add any other properties you need for the message
+      chatId: selectedChatId,
     };
-    sendMessage(message);
+    sendMessage(message, user.token);
     setMessageText("");
   }
 
@@ -104,29 +106,37 @@ function Messenger() {
         </ErrorBoundary>
 
         {/* Message input */}
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            "& > :not(style)": { m: 1 },
-          }}
-        >
-          <TextField
-            fullWidth
-            label="Type a message"
-            variant="outlined"
-            sx={{ mr: 1 }}
-            value={messageText}
-            onChange={handleInputChange}
-          />
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleSendMessage}
+        {selectedChatId && (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              "& > :not(style)": { m: 1 },
+            }}
           >
-            Send
-          </Button>
-        </Box>
+            <TextField
+              fullWidth
+              label="Type a message"
+              variant="outlined"
+              sx={{ mr: 1 }}
+              value={messageText}
+              onChange={handleInputChange}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  handleSendMessage();
+                  event.preventDefault();
+                }
+              }}
+            />
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleSendMessage}
+            >
+              Send
+            </Button>
+          </Box>
+        )}
       </Box>
     </Box>
   );

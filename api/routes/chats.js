@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const WebSocket = require("ws");
 const Chat = require("../models/Chat");
 const User = require("../models/User");
 
@@ -65,6 +66,24 @@ router.post("/", async (req, res) => {
     // Create and save the new chat
     const newChat = new Chat({ participants, name });
     await newChat.save();
+
+    // Send the new chat to the client
+    const wss = req.app.get("wss");
+
+    wss.clients.forEach((client) => {
+      if (
+        client.readyState === WebSocket.OPEN &&
+        participants.includes(client.user._id)
+      ) {
+        client.send(
+          JSON.stringify({
+            type: "joinChatSuccess",
+            chatId: messageData.chatId,
+            userName: messageData.userName,
+          })
+        );
+      }
+    });
 
     res.status(201).json(newChat);
   } catch (error) {

@@ -1,11 +1,24 @@
 version: "1"
 services:
+  messenger-nginx:
+    image: nginx:latest
+    ports:
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - mesenger-client-app
+      - mesenger-backend-api
+    networks:
+      - messenger_01
+
   mesenger-client-app:
     build: ./app
     # command: npm start
     restart: unless-stopped
-    ports:
-      - "3690:3000"
+    # ports:
+    #   - "3690:3000"
     volumes:
       - ../app:/app
     tty: true
@@ -18,9 +31,8 @@ services:
     build: ./api
     # command: npm start
     restart: unless-stopped
-    ports:
-      - "3600:4000"
-      - "4440:4440"
+    # ports:
+    #   - "3600:4000"
     volumes:
       - ../api:/api
     tty: true

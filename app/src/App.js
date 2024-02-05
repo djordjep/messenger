@@ -11,6 +11,7 @@ import { UserProvider } from "./UserContext";
 import Messenger from "./Messenger";
 import ProtectedRoute from "./ProtectedRoute";
 import { MessageProvider } from "./MessageContext";
+import { WebSocketProvider } from "./wsContext";
 
 function App() {
   return (
@@ -24,7 +25,9 @@ function App() {
             element={
               <ProtectedRoute>
                 <MessageProvider>
-                  <Messenger />
+                  <WebSocketProvider>
+                    <Messenger />
+                  </WebSocketProvider>
                 </MessageProvider>
               </ProtectedRoute>
             }

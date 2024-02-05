@@ -33,14 +33,24 @@ router.put("/:userId", async (req, res) => {
   // Implement logic to update the user's information in the database
   try {
     const { userId } = req.params;
-    const { username, password } = req.body;
+    const { username, password, publicKey } = req.body;
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const updateFields = {};
 
-    const user = await User.findOneAndUpdate(
-      { _id: userId },
-      { username, password: hashedPassword }
-    );
+    if (username) {
+      updateFields.username = username;
+    }
+
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updateFields.password = hashedPassword;
+    }
+
+    if (publicKey) {
+      updateFields.publicKey = publicKey;
+    }
+
+    const user = await User.findOneAndUpdate({ _id: userId }, updateFields);
 
     if (!user) {
       return res.status(404).send("User not found");

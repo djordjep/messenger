@@ -3,13 +3,25 @@ const Message = require("../models/Message");
 const url = require("url");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const winston = require("winston");
+
+const logger = winston.createLogger({
+  transports: [
+    // new winston.transports.File({
+    //   filename: "debug_ws.log",
+    //   level: "info",
+    // }),
+    new winston.transports.Console(),
+  ],
+});
 
 const initWebSocketServer = (server) => {
-  console.log("initWebSocketServer");
-  const wss = new WebSocket.Server({ server });
+  logger.info("initWebSocketServer");
+  // listen on /ws route
+  const wss = new WebSocket.Server({ server, path: "/ws" });
 
   wss.on("error", (error) => {
-    console.error("WebSocket server error:", error);
+    logger.error("WebSocket server error:", error);
   });
 
   wss.on("connection", async (ws, req) => {
@@ -20,6 +32,7 @@ const initWebSocketServer = (server) => {
       if (!token) throw new Error("No token provided");
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      // make user available to the rest of the code
       const user = await User.findById(decoded.userId);
 
       if (!user) throw new Error("User not found");
@@ -30,6 +43,7 @@ const initWebSocketServer = (server) => {
     }
 
     ws.on("message", async (message) => {
+      logger.info("Received message: " + message);
       try {
         const messageData = JSON.parse(message);
         // Validate messageData, e.g., check it has 'chatId', 'content', etc.
@@ -67,26 +81,26 @@ const initWebSocketServer = (server) => {
         // Broadcast message to relevant clients
         wss.clients.forEach((client) => {
           if (
-            client !== ws &&
             client.readyState === WebSocket.OPEN &&
             client.chatId === messageData.chatId
           ) {
+            logger.info(
+              "Broadcasting message to client: " + JSON.stringify(response)
+            );
             client.send(JSON.stringify(response));
           }
         });
       } catch (error) {
-        console.error("Error handling message:", error);
+        logger.error("Error handling message:", error);
       }
     });
 
     ws.on("error", (error) => {
-      console.error("WebSocket error:", error);
+      logger.error("WebSocket error:", error);
     });
   });
 
-  server.listen(4440, () => {
-    console.log("WebSocket server started on port 4440");
-  });
+  return wss;
 };
 
 async function saveMessageToDB(messageData, user, chatId) {
@@ -98,7 +112,7 @@ async function saveMessageToDB(messageData, user, chatId) {
 
     return await message.save();
   } catch (error) {
-    console.log(error);
+    logger.error(error);
   }
 }
 
