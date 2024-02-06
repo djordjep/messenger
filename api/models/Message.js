@@ -12,6 +12,7 @@ const messageSchema = new mongoose.Schema({
 });
 
 messageSchema.pre("save", async function (next) {
+  console.log("Pre save hook: Message");
   // Check if the chat exists and the user is a participant
   const chat = await Chat.findOne({
     _id: this.chat,
@@ -26,6 +27,7 @@ messageSchema.pre("save", async function (next) {
       this.content,
       chat.participants
     );
+    console.log("encrypted message:" + encryptedMessage);
     this.content = encryptedMessage;
     this.keys = encryptedSymmetricKeys;
   }

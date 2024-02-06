@@ -58,26 +58,12 @@ export async function getKey() {
   const jwkKey = await getKeyFromStore(store);
   db.close();
 
-  console.log("jwkKy");
+  console.log("jwkKey");
   console.log(jwkKey);
 
   if (!jwkKey) {
     return null;
   }
 
-  let key = null;
-
-  try {
-    key = await window.crypto.subtle.importKey(
-      "jwk",
-      jwkKey,
-      { name: "RSA-OAEP", hash: "SHA-256" },
-      false,
-      ["decrypt"]
-    );
-  } catch (e) {
-    console.log(`Error importing key: ${e}`);
-  }
-
-  return key;
+  return jwkKey;
 }

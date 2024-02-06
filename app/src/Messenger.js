@@ -5,8 +5,8 @@ import ChatList from "./ChatList";
 import MessagesList from "./MessagesList";
 import { useUser } from "./UserContext";
 import ErrorBoundary from "./ErrorBoundary";
-// import { createConnection, sendMessage, closeConnection } from "./wsService";
 import { useWebSocket } from "./wsContext";
+import { decryptMessage } from "./crypto";
 
 function Messenger() {
   const [selectedChatId, setSelectedChatId] = useState(null);
@@ -19,7 +19,10 @@ function Messenger() {
     const message = JSON.parse(event.data);
     console.log("New message received:", message);
     if (message.type === "chatMessage") {
-      addMessage(message);
+      decryptMessage(message, user).then((decryptedMessage) => {
+        addMessage(decryptedMessage);
+      });
+      //addMessage(message);
     }
   };
 
@@ -36,11 +39,6 @@ function Messenger() {
   const { socket, sendMessage, setSocketReadyCallback } = useWebSocket(); // this is firing twice?
 
   useEffect(() => {
-    // if (socket) {
-    //   console.log("adding event listener to socket");
-    //   socket.addEventListener("message", handleMessage);
-    // }
-    // if (!socket) return;
     setSocketReadyCallback(onWebSocketReady);
   }, []);
 
