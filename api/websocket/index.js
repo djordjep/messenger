@@ -70,12 +70,20 @@ const initWebSocketServer = (server) => {
         }
 
         if (messageData.type === "chatMesssage") {
-          // Save message to DB
-          savedMessage = await saveMessageToDB(messageData, ws.user, ws.chatId);
+          try {
+            // Save message to DB
+            savedMessage = await saveMessageToDB(
+              messageData,
+              ws.user,
+              ws.chatId
+            );
 
-          response = savedMessage.toObject();
+            response = savedMessage.toObject();
 
-          response.type = "chatMessage";
+            response.type = "chatMessage";
+          } catch (error) {
+            response = { error: error.message, type: "chatMessageError" };
+          }
         }
 
         // Broadcast message to relevant clients

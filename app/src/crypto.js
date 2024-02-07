@@ -24,6 +24,8 @@ function base64UrlToArrayBuffer(base64url) {
 }
 
 async function decryptSymmetricKey(encryptedMessage, privateKeyJwk) {
+  console.log("encryptedMessage");
+  console.log(encryptedMessage);
   try {
     // Initialize the JOSE library's key store
     const keystore = await jose.JWK.createKeyStore();
@@ -50,12 +52,36 @@ export const decryptMessage = async (message, user) => {
   const privateKey = await getKey();
 
   // test asyumetric encryption
-  const decryptedMessageTest = await decryptSymmetricKey(
-    message.content,
+  // const decryptedMessageTest = await decryptSymmetricKey(
+  //   message.content,
+  //   privateKey
+  // );
+
+  const keys = JSON.parse(message.keys);
+
+  // Get the encrypted symmetric key from the message
+  const symmetricKeyEncrypted = keys.filter((key) => {
+    return key.userId === user.userId;
+  })[0].encryptedKey;
+
+  // Decrypt the symmetric key using RSA-OAEP
+  const decryptedSymmetricKey = await decryptSymmetricKey(
+    symmetricKeyEncrypted,
     privateKey
   );
 
-  message.content = decryptedMessageTest;
+  console.log(`decryptedSymmetricKey: ${decryptedSymmetricKey}`);
+
+  try {
+    // Decrypt the message using the symmetric key
+    const decryptedMessage = await jose.JWE.createDecrypt(
+      await jose.JWK.asKey(decryptedSymmetricKey)
+    ).decrypt(message.content);
+
+    message.content = decryptedMessage.plaintext.toString("utf8");
+  } catch (e) {
+    console.error("Error decrypting message:", e);
+  }
 
   return message;
 };
