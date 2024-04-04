@@ -20,6 +20,7 @@ export const WebSocketProvider = ({ children }) => {
   const token = useUser().user.token;
   const [messageQueue, setMessageQueue] = useState([]);
   const { currentChatId } = useMessageContext();
+  const [reconnectCount, setReconnectCount] = useState(0);
 
   const enqueueMessage = (message) => {
     console.log("Setting message in queue:", message);
@@ -64,6 +65,7 @@ export const WebSocketProvider = ({ children }) => {
     return () => {
       if (socket) {
         socket.close();
+        setSocket(null);
       }
     };
   }, []);
@@ -71,7 +73,15 @@ export const WebSocketProvider = ({ children }) => {
   useEffect(() => {
     // This code will run when 'socket' changes
     console.log("Socket state updated:", socket);
-    if (!socket) return;
+    if (!socket) {
+      console.log(`Socket: ${socket}`);
+      console.log("Socket is null, reconnecting...");
+      console.log("Reconnect count:", reconnectCount);
+
+      setReconnectCount(reconnectCount + 1);
+      setTimeout(async () => await connectWebSocket(token), 3600);
+      return;
+    }
 
     // check messageQueue and send messages
     joinChat(); // join chat is sent and response recieved and logged
@@ -80,6 +90,10 @@ export const WebSocketProvider = ({ children }) => {
   }, [socket]);
 
   const connectWebSocket = async (token) => {
+    if (socket && socket.readyState === WebSocket.OPEN) return;
+    if (socket) {
+      socket.close();
+    }
     return new Promise((resolve, reject) => {
       const newSocket = new WebSocket(
         `${process.env.REACT_APP_WSS_API_DOMAIN}?token=${token}`
@@ -87,10 +101,10 @@ export const WebSocketProvider = ({ children }) => {
 
       newSocket.onopen = () => {
         console.log("WebSocket connected");
-        newSocket.addEventListener("message", (event) => {
-          const message = JSON.parse(event.data);
-          console.log("New message received in context:", message);
-        });
+        // newSocket.addEventListener("message", (event) => {
+        //   const message = JSON.parse(event.data);
+        //   console.log("New message received in context:", message);
+        // });
         if (socketReadyCallback.current) {
           console.log(
             "Calling socketReadyCallback and setting up event listener"

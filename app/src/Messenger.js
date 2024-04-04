@@ -1,5 +1,14 @@
-import React, { useEffect, useState, useRef } from "react";
-import { Box, Drawer, TextField, Button } from "@mui/material";
+import React, { useEffect, useState, useRef, useCallback } from "react";
+import {
+  Box,
+  Drawer,
+  TextField,
+  Button,
+  useMediaQuery,
+  useTheme,
+  IconButton,
+} from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
 import { useMessageContext } from "./MessageContext";
 import ChatList from "./ChatList";
 import MessagesList from "./MessagesList";
@@ -10,6 +19,15 @@ import { decryptMessage } from "./crypto";
 
 function Messenger() {
   const [selectedChatId, setSelectedChatId] = useState(null);
+  const [mobileOpen, setMobileOpen] = useState(!selectedChatId);
+
+  const theme = useTheme();
+  // Use useMediaQuery hook to check for screen size
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
 
   const user = useUser().user;
 
@@ -22,21 +40,18 @@ function Messenger() {
       decryptMessage(message, user).then((decryptedMessage) => {
         addMessage(decryptedMessage);
       });
-      //addMessage(message);
     }
   };
 
-  const onWebSocketReady = (newSocket) => {
-    console.log("onWebSocketReady");
+  const onWebSocketReady = useCallback((newSocket) => {
     if (!newSocket) {
-      console.log("socket is null");
       return;
     }
 
     newSocket.addEventListener("message", handleMessage);
-  };
+  }, []);
 
-  const { socket, sendMessage, setSocketReadyCallback } = useWebSocket(); // this is firing twice?
+  const { socket, sendMessage, setSocketReadyCallback } = useWebSocket();
 
   useEffect(() => {
     setSocketReadyCallback(onWebSocketReady);
@@ -76,7 +91,26 @@ function Messenger() {
 
   return (
     <Box sx={{ display: "flex" }}>
-      {/* Sidebar */}
+      {isMobile && (
+        <IconButton
+          onClick={handleDrawerToggle}
+          sx={{
+            position: "fixed",
+            top: 10,
+            left: 10,
+            zIndex: 1201,
+            color: "common.white", // Text/icon color
+            backgroundColor: "primary.main", // Button background color
+            "&:hover": {
+              backgroundColor: "primary.dark", // Button background color on hover
+            },
+          }} // Adjust color as needed
+          aria-label="toggle chat list"
+        >
+          <MenuIcon />
+        </IconButton>
+      )}
+
       <Drawer
         sx={{
           width: drawerWidth,
@@ -88,10 +122,17 @@ function Messenger() {
             flexDirection: "column",
           },
         }}
-        variant="permanent"
+        variant={isMobile ? "temporary" : "permanent"}
+        open={mobileOpen}
+        onClose={handleDrawerToggle}
         anchor="left"
       >
-        <ChatList onChatSelect={setSelectedChatId} />
+        <ChatList
+          onChatSelect={(chatId) => {
+            setSelectedChatId(chatId);
+            if (isMobile) setMobileOpen(false);
+          }}
+        />
       </Drawer>
 
       {/* Main content */}
@@ -103,7 +144,6 @@ function Messenger() {
           <MessagesList />
         </ErrorBoundary>
 
-        {/* Message input */}
         {selectedChatId && (
           <Box
             sx={{
